@@ -20,31 +20,31 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 document.documentElement.classList.add("js");
 
 const PROYECTOS_1 = [
-  { type: "video", src: "", shape: "sm", title: "Vamos a conocer" },
+  { type: "video", src: "assets/web/proyecto-1.mp4", shape: "sm", title: "Proyecto 1" },
   { type: "video", src: "", shape: "h",  title: "Proyecto 2" },
-  { type: "video", src: "", shape: "v",  title: "Raíz" },
-  { type: "video", src: "", shape: "v",  title: "LeBron" },
-  { type: "video", src: "", shape: "sm", title: "Proyecto 5" },
-  { type: "video", src: "", shape: "h",  title: "Proyecto 6" },
-  { type: "video", src: "", shape: "v",  title: "Proyecto 7" },
-  { type: "video", src: "", shape: "v",  title: "Proyecto 8" },
-  { type: "video", src: "", shape: "v",  title: "Podóloga" },
-  { type: "video", src: "", shape: "v",  title: "Proyecto 10" },
-  { type: "video", src: "", shape: "v",  title: "Proyecto 11" },
+  { type: "video", src: "assets/web/proyecto-3.mp4", shape: "v",  title: "Proyecto 3" },
+  { type: "video", src: "assets/web/proyecto-4.mp4", shape: "v",  title: "Proyecto 4" },
+  { type: "video", src: "assets/web/proyecto-5.mp4", shape: "sm", title: "Proyecto 5" },
+  { type: "video", src: "assets/web/proyecto-6.mp4", shape: "h",  title: "Proyecto 6" },
+  { type: "video", src: "assets/web/proyecto-7.mp4", shape: "v",  title: "Proyecto 7" },
+  { type: "video", src: "assets/web/proyecto-8.mp4", shape: "v",  title: "Proyecto 8" },
+  { type: "video", src: "", shape: "v",  title: "Proyecto 9" },
+  { type: "video", src: "assets/web/proyecto-10.mp4", shape: "v",  title: "Proyecto 10" },
+  { type: "video", src: "assets/web/proyecto-11.mp4", shape: "v",  title: "Proyecto 11" },
   { type: "video", src: "", shape: "v",  title: "Proyecto 12" },
   { type: "video", src: "", shape: "h",  title: "Proyecto 13" },
 ];
 
 const PROYECTOS_2 = [
   { type: "video", src: "", shape: "v", title: "Proyecto 14" },
-  { type: "video", src: "", shape: "v", title: "Raíz 2" },
-  { type: "video", src: "", shape: "v", title: "Proyecto 16" },
-  { type: "video", src: "", shape: "v", title: "Proyecto 17" },
-  { type: "video", src: "", shape: "v", title: "Congreso" },
-  { type: "video", src: "", shape: "v", title: "Proyecto 19" },
-  { type: "video", src: "", shape: "v", title: "Proyecto 20" },
-  { type: "video", src: "", shape: "v", title: "Medical" },
-  { type: "video", src: "", shape: "h", title: "Proyecto 22" },
+  { type: "video", src: "assets/web/proyecto-15.mp4", shape: "v", title: "Proyecto 15" },
+  { type: "video", src: "assets/web/proyecto-16.mp4", shape: "v", title: "Proyecto 16" },
+  { type: "video", src: "assets/web/proyecto-17.mp4", shape: "v", title: "Proyecto 17" },
+  { type: "video", src: "assets/web/proyecto-18.mp4", shape: "v", title: "Proyecto 18" },
+  { type: "video", src: "assets/web/proyecto-19.mp4", shape: "v", title: "Proyecto 19" },
+  { type: "video", src: "assets/web/proyecto-20.mp4", shape: "v", title: "Proyecto 20" },
+  { type: "video", src: "assets/web/proyecto-21.mp4", shape: "v", title: "Proyecto 21" },
+  { type: "video", src: "assets/web/proyecto-22.mp4", shape: "h", title: "Proyecto 22" },
   { type: "video", src: "", shape: "h", title: "Proyecto 23" },
   { type: "video", src: "", shape: "h", title: "Proyecto 24" },
   { type: "video", src: "", shape: "h", title: "Proyecto 25" },
@@ -118,8 +118,10 @@ function crearProyecto(item) {
     btn.setAttribute("aria-pressed", "false");
     btn.append(media, iconoPlay());
 
-    const vistaPrevia = () => { if (!reduceMotion.matches && v.muted) v.play().catch(() => {}); };
-    const pausarVista = () => { if (v.muted) { v.pause(); } };
+    // activo = el visitante lo puso a reproducir (con sonido); si no, es solo vista previa muda
+    let activo = false;
+    const vistaPrevia = () => { if (!activo && !reduceMotion.matches) v.play().catch(() => {}); };
+    const pausarVista = () => { if (!activo) v.pause(); };
 
     btn.addEventListener("pointerenter", vistaPrevia);
     btn.addEventListener("pointerleave", pausarVista);
@@ -132,21 +134,84 @@ function crearProyecto(item) {
     let raf = 0;
     const avanzar = () => {
       if (v.duration) barra.style.setProperty("--p", v.currentTime / v.duration);
-      if (!v.muted && !v.paused) raf = requestAnimationFrame(avanzar);
+      if (activo && !v.paused) raf = requestAnimationFrame(avanzar);
     };
     v.addEventListener("play", () => { cancelAnimationFrame(raf); avanzar(); });
 
-    btn.addEventListener("click", () => {
-      const conSonido = v.muted;
-      v.muted = !conSonido;
-      if (conSonido) v.play().catch(() => {});
-      else v.pause();
-      btn.setAttribute("aria-pressed", String(conSonido));
-      btn.setAttribute("aria-label", `${conSonido ? "Pausar" : "Reproducir con sonido"}: ${item.title || "video"}`);
-      fig.classList.toggle("is-playing", conSonido);
+    const titulo = item.title || "video";
+    const setActivo = (on) => {
+      activo = on;
+      if (on) { v.muted = silenciado; v.play().catch(() => {}); }
+      else { v.pause(); v.muted = true; }
+      btn.setAttribute("aria-pressed", String(on));
+      btn.setAttribute("aria-label", `${on ? "Pausar" : "Reproducir con sonido"}: ${titulo}`);
+      fig.classList.toggle("is-playing", on);
+    };
+    btn.addEventListener("click", () => setActivo(!activo));
+
+    // Controles: volumen + pantalla completa
+    let silenciado = false;
+    const ctrl = document.createElement("div");
+    ctrl.className = "project__ctrl";
+
+    const botonIcono = (icono, label) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "project__ctrl-btn";
+      b.setAttribute("aria-label", label);
+      const svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("focusable", "false");
+      svg.setAttribute("aria-hidden", "true");
+      const use = document.createElementNS(SVG_NS, "use");
+      use.setAttribute("href", `#${icono}`);
+      svg.appendChild(use);
+      b.appendChild(svg);
+      return b;
+    };
+    const usar = (b, icono) => b.querySelector("use").setAttribute("href", `#${icono}`);
+
+    const btnMute = botonIcono("volume", `Silenciar: ${titulo}`);
+    const rango = document.createElement("input");
+    rango.type = "range";
+    rango.className = "project__vol";
+    rango.min = "0"; rango.max = "1"; rango.step = "0.05"; rango.value = "1";
+    rango.setAttribute("aria-label", `Volumen: ${titulo}`);
+    const btnFull = botonIcono("fullscreen", `Pantalla completa: ${titulo}`);
+
+    const pintarVolumen = () => {
+      const mudo = silenciado || v.volume === 0;
+      usar(btnMute, mudo ? "mute" : "volume");
+      btnMute.setAttribute("aria-label", `${mudo ? "Activar sonido" : "Silenciar"}: ${titulo}`);
+      rango.value = mudo ? 0 : v.volume;
+      rango.style.setProperty("--v", rango.value);
+    };
+    btnMute.addEventListener("click", () => {
+      if (v.volume === 0) v.volume = 0.5;
+      silenciado = !silenciado;
+      if (activo) v.muted = silenciado;
+      pintarVolumen();
+    });
+    rango.addEventListener("input", () => {
+      v.volume = Number(rango.value);
+      silenciado = v.volume === 0;
+      if (activo) v.muted = silenciado;
+      pintarVolumen();
+    });
+    btnFull.addEventListener("click", () => {
+      if (!activo) setActivo(true);
+      if (v.requestFullscreen) v.requestFullscreen().catch(() => {});
+      else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen();
+    });
+    // En pantalla completa aparecen los controles nativos del navegador (incluye volumen)
+    v.addEventListener("fullscreenchange", () => { v.controls = document.fullscreenElement === v; });
+    v.addEventListener("volumechange", () => {
+      if (document.fullscreenElement !== v) return;
+      silenciado = v.muted;
+      pintarVolumen();
     });
 
-    fig.append(btn, barra);
+    ctrl.append(btnMute, rango, btnFull);
+    fig.append(btn, barra, ctrl);
   } else {
     const img = document.createElement("img");
     img.src = item.src;

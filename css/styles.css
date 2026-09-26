@@ -482,6 +482,42 @@ a { color: inherit; }
 .project.is-playing .icon-play { opacity: 0; transform: scale(.5) rotate(90deg); }
 .project.is-playing .icon-pause { opacity: 1; transform: none; }
 
+/* Controles de volumen y pantalla completa */
+.project__ctrl {
+  position: absolute;
+  top: 8px; right: 8px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.5);
+  color: #fff;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.project:hover .project__ctrl,
+.project:focus-within .project__ctrl { opacity: 1; }
+@media (hover: none) { .project__ctrl { opacity: 1; } }
+.project__ctrl-btn {
+  all: unset;
+  display: grid; place-items: center;
+  width: 28px; height: 28px;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.project__ctrl-btn svg { width: 18px; height: 18px; }
+.project__ctrl-btn:focus-visible { outline: 2px solid #fff; }
+.project__vol {
+  width: 56px; height: 14px;
+  margin: 0;
+  accent-color: #fff;
+  cursor: pointer;
+}
+@media (max-width: 420px) { .project__vol { width: 40px; } }
+.project video:fullscreen { object-fit: contain; background: #000; }
+
 /* Barra de progreso mientras suena el video */
 .project__progress {
   position: absolute;
