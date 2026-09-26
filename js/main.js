@@ -58,12 +58,15 @@ function iconoPlay() {
   play.className = "project__play";
   play.setAttribute("aria-hidden", "true");
   const circulo = document.createElement("span");
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("focusable", "false");
-  const use = document.createElementNS(SVG_NS, "use");
-  use.setAttribute("href", "#play");
-  svg.appendChild(use);
-  circulo.appendChild(svg);
+  ["play", "pause"].forEach((icono) => {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", `icon-${icono}`);
+    svg.setAttribute("focusable", "false");
+    const use = document.createElementNS(SVG_NS, "use");
+    use.setAttribute("href", `#${icono}`);
+    svg.appendChild(use);
+    circulo.appendChild(svg);
+  });
   play.appendChild(circulo);
   return play;
 }
@@ -122,6 +125,17 @@ function crearProyecto(item) {
     btn.addEventListener("pointerleave", pausarVista);
     btn.addEventListener("focus", vistaPrevia);
     btn.addEventListener("blur", pausarVista);
+    // Barra de progreso: se actualiza en cada cuadro mientras suena
+    const barra = document.createElement("span");
+    barra.className = "project__progress";
+    barra.setAttribute("aria-hidden", "true");
+    let raf = 0;
+    const avanzar = () => {
+      if (v.duration) barra.style.setProperty("--p", v.currentTime / v.duration);
+      if (!v.muted && !v.paused) raf = requestAnimationFrame(avanzar);
+    };
+    v.addEventListener("play", () => { cancelAnimationFrame(raf); avanzar(); });
+
     btn.addEventListener("click", () => {
       const conSonido = v.muted;
       v.muted = !conSonido;
@@ -132,7 +146,7 @@ function crearProyecto(item) {
       fig.classList.toggle("is-playing", conSonido);
     });
 
-    fig.append(btn);
+    fig.append(btn, barra);
   } else {
     const img = document.createElement("img");
     img.src = item.src;
@@ -154,12 +168,65 @@ function renderGrid(id, items) {
   const grid = document.getElementById(id);
   if (!grid) return;
   const frag = document.createDocumentFragment();
-  items.forEach((item) => frag.appendChild(crearProyecto(item)));
+  items.forEach((item, i) => {
+    const fig = crearProyecto(item);
+    fig.style.setProperty("--i", i); // orden del revelado
+    frag.appendChild(fig);
+  });
   grid.appendChild(frag);
 }
 
 renderGrid("grid-1", PROYECTOS_1);
 renderGrid("grid-2", PROYECTOS_2);
+
+/* Trazo a mano alrededor de cada pastilla de Servicios.
+   Se arma con el tamaño real de la pastilla (así rodea bien las puntas
+   redondeadas) y se dibuja con CSS al pasar el mouse. */
+const PAD_X = 14, PAD_Y = 12;
+
+function trazoPastilla(w, h) {
+  const W = w + PAD_X * 2, H = h + PAD_Y * 2;
+  const x0 = 5, x1 = W - 4, y0 = 4, y1 = H - 3;
+  const R = (y1 - y0) / 2, k = 1.3;
+  const inicio = x0 + R * 1.6;
+  return [
+    `M ${inicio} ${y0 + 3}`,
+    `C ${inicio + (x1 - x0) * .3} ${y0 - 1}, ${x1 - R * 1.4} ${y0 + 1}, ${x1 - R} ${y0}`,
+    `C ${x1 - R + R * k} ${y0}, ${x1 - R + R * k} ${y1 - 1}, ${x1 - R * 1.05} ${y1}`,
+    `C ${x1 - (x1 - x0) * .4} ${y1 + 2}, ${x0 + R * 1.5} ${y1 + 1}, ${x0 + R} ${y1 - 1}`,
+    `C ${x0 + R - R * k} ${y1 - 2}, ${x0 + R - R * (k + .05)} ${y0 + 1}, ${x0 + R * 1.1} ${y0 + 2}`,
+    `C ${x0 + R * 2} ${y0 + 1}, ${inicio + (x1 - x0) * .08} ${y0 - 3}, ${inicio + (x1 - x0) * .16} ${y0 - 2}`,
+  ].join(" ");
+}
+
+function armarOvalo(pill) {
+  const { width: w, height: h } = pill.getBoundingClientRect();
+  if (!w) return;
+  let svg = pill.querySelector(".pill__oval");
+  if (!svg) {
+    svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("class", "pill__oval");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "1.8");
+    path.setAttribute("stroke-linecap", "round");
+    svg.appendChild(path);
+    pill.appendChild(svg);
+  }
+  const W = w + PAD_X * 2, H = h + PAD_Y * 2;
+  svg.setAttribute("width", W);
+  svg.setAttribute("height", H);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const path = svg.firstChild;
+  path.setAttribute("d", trazoPastilla(w, h));
+  svg.style.setProperty("--len", `${Math.ceil(path.getTotalLength())}px`);
+}
+
+const pillObserver = new ResizeObserver((entries) => entries.forEach((e) => armarOvalo(e.target)));
+document.querySelectorAll(".pill").forEach((pill) => pillObserver.observe(pill));
 
 /* ---------------------------------------------------------
    Menú mobile
@@ -225,4 +292,18 @@ const drawObserver = new IntersectionObserver(
   },
   { threshold: 0.4 }
 );
-document.querySelectorAll(".doodle, .process__oval").forEach((el) => drawObserver.observe(el));
+document.querySelectorAll(".doodle, .process__oval, .projects__header").forEach((el) => drawObserver.observe(el));
+
+// Las grillas son más altas que la pantalla en celular: se revelan apenas asoman
+const developObserver = new IntersectionObserver(
+  (entries, obs) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("is-developed");
+        obs.unobserve(entry.target);
+      }
+    });
+  },
+  { rootMargin: "0px 0px -20% 0px" }
+);
+document.querySelectorAll(".projects__grid").forEach((el) => developObserver.observe(el));
